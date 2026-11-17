@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HouseTab — shared bills without the chasing</title>
+<meta name="description" content="HouseTab shows everyone in a shared house what they owe, and to whom. A student prototype with invented data.">
+<style>
+  :root{
+    --cream:#FBF6EE; --paper:#FFFFFF; --ink:#1F2A24; --soft:#5B655F;
+    --green:#1E5B45; --green-2:#2E7A5E; --mint:#DDEFE5;
+    --coral:#E8684A; --coral-2:#FBE3DB; --line:#E7DFD2;
+    --sam:#E8684A; --priya:#3C7DD9; --leo:#E2A72E; --aisha:#8C5BD6; --minh:#2E9C74;
+    --r:18px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--cream);color:var(--ink);
+    font:18px/1.55 ui-rounded,"SF Pro Rounded","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;}
+  a{color:var(--green)}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 20px}
+  button,input{font:inherit;color:inherit}
+  button{cursor:pointer}
+  :focus-visible{outline:3px solid var(--priya);outline-offset:3px;border-radius:10px}
+
+  /* top bar */
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:-.3px;text-decoration:none;color:var(--ink)}
+  .logo-mark{width:36px;height:36px;border-radius:10px;background:var(--green);display:grid;place-items:center}
+  .tag{font-size:14px;color:var(--soft);background:var(--paper);border:1px solid var(--line);padding:6px 12px;border-radius:999px;white-space:nowrap}
+
+  /* hero */
+  .hero{display:grid;grid-template-columns:1.15fr .85fr;gap:40px;align-items:center;padding:28px 0 56px}
+  .eyebrow{display:inline-block;font-size:15px;font-weight:700;color:var(--green);background:var(--mint);padding:6px 12px;border-radius:999px;margin-bottom:16px}
+  h1{font-size:clamp(34px,5.4vw,56px);line-height:1.08;letter-spacing:-1.2px;margin:0 0 18px}
+  h1 em{font-style:normal;color:var(--coral)}
+  .lead{font-size:20px;color:var(--soft);margin:0 0 28px;max-width:34ch}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:58px;padding:0 26px;border-radius:14px;border:0;
+    font-weight:700;font-size:19px;text-decoration:none;transition:transform .08s, background .15s}
+  .btn:active{transform:scale(.98)}
+  .btn-main{background:var(--green);color:#fff}
+  .btn-main:hover{background:var(--green-2)}
+  .btn-ghost{background:transparent;color:var(--green);border:2px solid var(--green)}
+  .hero-ctas{display:flex;gap:12px;flex-wrap:wrap}
+  .house{width:100%;max-width:400px;justify-self:center}
+  .bubble{animation:bob 3.2s ease-in-out infinite}
+  .bubble.b2{animation-delay:.6s}.bubble.b3{animation-delay:1.2s}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+  @media (prefers-reduced-motion:reduce){.bubble{animation:none}html{scroll-behavior:auto}}
+
+  /* pain strip */
+  .pain{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding-bottom:64px}
+  .pain div{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:20px}
+  .pain b{display:block;font-size:19px;margin-bottom:4px}
+  .pain span{color:var(--soft);font-size:16px}
+  .pain .n{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--coral-2);color:var(--coral);font-weight:800;margin-bottom:10px}
+
+  /* demo */
+  .demo{background:var(--green);color:#fff;border-radius:28px;padding:44px 0 48px;margin-bottom:64px}
+  .demo h2{font-size:clamp(28px,4vw,40px);letter-spacing:-.6px;margin:0 0 6px}
+  .demo .sub{color:#CFE6DA;margin:0 0 28px}
+  .note{font-size:14px;background:rgba(255,255,255,.12);padding:4px 10px;border-radius:999px;display:inline-block;margin-bottom:14px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+  .card{background:var(--paper);color:var(--ink);border-radius:22px;padding:24px}
+  .card h3{margin:0 0 4px;font-size:22px}
+  .card .hint{color:var(--soft);font-size:16px;margin:0 0 18px}
+
+  .who{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .chip{min-height:50px;padding:0 16px;border-radius:999px;border:2px solid var(--line);background:#fff;font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:8px}
+  .chip .dot{width:14px;height:14px;border-radius:50%}
+  .chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+  .chip.tick[aria-pressed="true"]::after{content:"✓";font-weight:800}
+
+  .total{border-radius:16px;padding:18px 20px;margin-bottom:14px}
+  .total.owe{background:var(--coral-2)}
+  .total.clear{background:var(--mint)}
+  .total .big{font-size:40px;font-weight:800;letter-spacing:-1px;line-height:1.1}
+  .total .lbl{font-weight:700;font-size:17px}
+  .rows{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+  .row .l{display:flex;align-items:center;gap:10px;min-width:0}
+  .av{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;font-size:17px}
+  .row .amt{font-weight:800;font-size:20px;white-space:nowrap}
+  .pay{min-height:48px;padding:0 16px;border-radius:12px;border:0;background:var(--green);color:#fff;font-weight:700;font-size:16px;white-space:nowrap}
+  .pay:hover{background:var(--green-2)}
+  .in{color:var(--green)}
+  .small{font-size:15px;color:var(--soft)}
+  .sec{font-weight:800;font-size:16px;margin:20px 0 10px;color:var(--soft);text-transform:uppercase;letter-spacing:.6px}
+
+  .types{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+  .type{min-height:76px;border-radius:14px;border:2px solid var(--line);background:#fff;font-weight:700;font-size:15px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+  .type .ic{font-size:24px;line-height:1}
+  .type[aria-pressed="true"]{border-color:var(--green);background:var(--mint)}
+  label.f{display:block;font-weight:700;margin:0 0 8px}
+  .money{display:flex;align-items:center;border:2px solid var(--line);border-radius:14px;background:#fff;margin-bottom:16px}
+  .money:focus-within{border-color:var(--green)}
+  .money span{padding:0 6px 0 16px;font-size:26px;font-weight:800;color:var(--soft)}
+  .money input{border:0;outline:0;width:100%;font-size:26px;font-weight:800;padding:12px 16px 12px 0;background:transparent;border-radius:14px}
+  .preview{background:var(--cream);border-radius:14px;padding:14px 16px;margin:4px 0 16px;font-weight:700}
+  .err{color:#B3361B;font-weight:700;min-height:1.4em;margin:0 0 8px;font-size:16px}
+  .wide{width:100%}
+
+  .bills{margin-top:20px}
+  .bill{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+  .bill:first-child{border-top:0}
+  .bill b{display:block}
+  .bill .small{display:block}
+  .x{border:0;background:none;color:var(--soft);font-size:15px;text-decoration:underline;min-height:44px;padding:0 6px}
+
+  table.house-t{width:100%;border-collapse:collapse;font-size:17px}
+  .house-t td{padding:10px 4px;border-top:1px solid var(--line)}
+  .house-t tr:first-child td{border-top:0}
+  .house-t td:last-child{text-align:right;font-weight:800}
+  .pos{color:var(--green)} .neg{color:#B3361B}
+
+  /* how */
+  .how{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;padding-bottom:64px}
+  .how h3{margin:8px 0 4px;font-size:21px}
+  .how p{margin:0;color:var(--soft);font-size:17px}
+  .step{font-size:44px;font-weight:800;color:var(--coral);line-height:1}
+  h2.t{font-size:clamp(28px,4vw,40px);letter-spacing:-.6px;margin:0 0 24px}
+
+  /* cta */
+  .cta{background:var(--paper);border:1px solid var(--line);border-radius:28px;padding:40px 28px;text-align:center;margin-bottom:56px}
+  .cta p{color:var(--soft);margin:0 auto 22px;max-width:42ch}
+  .signup{display:flex;gap:10px;max-width:520px;margin:0 auto;flex-wrap:wrap}
+  .signup input{flex:1 1 240px;min-height:58px;border:2px solid var(--line);border-radius:14px;padding:0 16px;font-size:18px}
+  .signup input:focus{border-color:var(--green);outline:0}
+  .signup .btn{flex:1 1 180px}
+  .done{display:none;max-width:520px;margin:0 auto;background:var(--mint);border-radius:18px;padding:22px}
+  .done b{font-size:22px;display:block;margin-bottom:4px}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:28px 0 40px}
+  .stand{background:var(--paper);border:1px dashed #CDBFA8;border-radius:18px;padding:20px 22px;margin-bottom:18px}
+  .stand h2{font-size:18px;margin:0 0 10px}
+  .stand p{margin:0 0 8px;font-size:16px}
+  .stand p:last-child{margin:0}
+  .fine{font-size:14px;color:var(--soft)}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(120px);background:var(--ink);color:#fff;
+    padding:14px 20px;border-radius:14px;font-weight:700;font-size:17px;transition:transform .25s;z-index:10;max-width:calc(100% - 32px);text-align:center}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+
+  @media (max-width:860px){
+    .hero{grid-template-columns:1fr;gap:20px;padding-top:8px}
+    .house{max-width:300px;order:-1}
+    .grid,.pain,.how{grid-template-columns:1fr}
+    .demo{border-radius:0;margin-left:-20px;margin-right:-20px}
+  }
+  @media (max-width:420px){
+    body{font-size:17px}
+    .tag{display:none}
+    .types{grid-template-columns:repeat(2,1fr)}
+    .card{padding:20px 16px}
+    .total .big{font-size:34px}
+    .row{flex-wrap:wrap}
+    .pay{width:100%}
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="#">
+      <span class="logo-mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" fill="#fff"/></svg>
+      </span>
+      HouseTab
+    </a>
+    <span class="tag">Student prototype · invented data</span>
+  </header>
+
+  <section class="hero">
+    <div>
+      <span class="eyebrow">For shared houses like yours in Rathmines</span>
+      <h1>One person pays the bill. <em>Everyone</em> sees what they owe.</h1>
+      <p class="lead">No more chasing housemates on WhatsApp. HouseTab splits electricity, gas and broadband, and shows each person who to pay.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-main" href="#try">Try it now</a>
+        <a class="btn btn-ghost" href="#join">Join the test</a>
+      </div>
+    </div>
+
+    <svg class="house" viewBox="0 0 400 360" role="img" aria-label="A house with five housemates, each with a fair share">
+      <path d="M40 170 200 50l160 120v170H40z" fill="#fff" stroke="#1F2A24" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M20 180 200 40l180 140" fill="none" stroke="#1E5B45" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="170" y="260" width="60" height="80" rx="6" fill="#1E5B45"/>
+      <g>
+        <rect x="80" y="180" width="60" height="56" rx="10" fill="#E8684A"/><text x="110" y="216" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">S</text>
+        <rect x="170" y="180" width="60" height="56" rx="10" fill="#3C7DD9"/><text x="200" y="216" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">P</text>
+        <rect x="260" y="180" width="60" height="56" rx="10" fill="#E2A72E"/><text x="290" y="216" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">L</text>
+        <rect x="80" y="270" width="60" height="56" rx="10" fill="#8C5BD6"/><text x="110" y="306" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">A</text>
+        <rect x="260" y="270" width="60" height="56" rx="10" fill="#2E9C74"/><text x="290" y="306" text-anchor="middle" font-size="22" font-weight="800" fill="#fff">M</text>
+      </g>
+      <g class="bubble"><rect x="0" y="80" width="110" height="44" rx="22" fill="#FBE3DB"/><text x="55" y="109" text-anchor="middle" font-size="18" font-weight="800" fill="#1F2A24">⚡ €37</text></g>
+      <g class="bubble b2"><rect x="290" y="70" width="110" height="44" rx="22" fill="#DDEFE5"/><text x="345" y="99" text-anchor="middle" font-size="18" font-weight="800" fill="#1F2A24">🔥 €24</text></g>
+      <g class="bubble b3"><rect x="150" y="0" width="100" height="40" rx="20" fill="#FFF3D6"/><text x="200" y="27" text-anchor="middle" font-size="17" font-weight="800" fill="#1F2A24">📶 €10</text></g>
+    </svg>
+  </section>
+
+  <section class="pain" aria-label="The problem">
+    <div><span class="n">1</span><b>The bill is in one name</b><span>One housemate pays it all, then waits to get paid back.</span></div>
+    <div><span class="n">2</span><b>Nobody can see the total</b><span>Who paid? Who still owes? It is lost in the group chat.</span></div>
+    <div><span class="n">3</span><b>One person does the chasing</b><span>They become "the bad guy" just for asking for their own money.</span></div>
+  </section>
+</div>
+
+<section class="demo" id="try">
+  <div class="wrap">
+    <span class="note">Working demo · invented housemates and bills · nothing is saved</span>
+    <h2>Try it: see what you owe</h2>
+    <p class="sub">Pick your name. Your screen shows what you owe and to whom. Then add a bill and watch it split.</p>
+
+    <div class="grid">
+      <!-- MY SCREEN -->
+      <div class="card" aria-live="polite">
+        <h3>My screen</h3>
+        <p class="hint">I am:</p>
+        <div class="who" id="me"></div>
+        <div id="mine"></div>
+      </div>
+
+      <!-- ADD BILL -->
+      <div class="card">
+        <h3>Add a bill</h3>
+        <p class="hint">Three quick steps.</p>
+
+        <label class="f" id="t-lbl">1. What bill?</label>
+        <div class="types" id="types" role="group" aria-labelledby="t-lbl"></div>
+
+        <label class="f" for="amt">2. How much?</label>
+        <div class="money"><span>€</span><input id="amt" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
+
+        <label class="f" id="p-lbl">3. Who paid it?</label>
+        <div class="who" id="payer" role="group" aria-labelledby="p-lbl"></div>
+
+        <label class="f" id="s-lbl">Split between</label>
+        <div class="who" id="split" role="group" aria-labelledby="s-lbl"></div>
+
+        <div class="preview" id="preview">Each person pays €0.00</div>
+        <p class="err" id="err" role="alert"></p>
+        <button class="btn btn-main wide" id="add">Split this bill</button>
+
+        <div class="bills" id="bills"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <h3>The whole house</h3>
+      <p class="hint">Green means the house owes you. Red means you owe the house. Everyone sees the same thing.</p>
+      <table class="house-t" id="houseT"></table>
+    </div>
+  </div>
+</section>
+
+<div class="wrap">
+  <section aria-labelledby="how-t">
+    <h2 class="t" id="how-t">How it works</h2>
+    <div class="how">
+      <div><div class="step">1</div><h3>Add the bill</h3><p>The person who paid types the amount. That's it.</p></div>
+      <div><div class="step">2</div><h3>It splits fairly</h3><p>Everyone's share is worked out to the cent.</p></div>
+      <div><div class="step">3</div><h3>Everyone sees it</h3><p>Each housemate opens the app and sees one number: what they owe, and to whom. No one has to ask.</p></div>
+    </div>
+  </section>
+
+  <section class="cta" id="join">
+    <h2 class="t" style="margin-bottom:10px">Be one of the first houses to try it</h2>
+    <p>Leave your email and we'll tell you when the test opens. One email, no spam.</p>
+    <form class="signup" id="signup" novalidate>
+      <label for="email" class="sr" style="position:absolute;left:-9999px">Email address</label>
+      <input id="email" type="email" placeholder="you@example.com" autocomplete="email" required>
+      <button class="btn btn-main" type="submit">Count me in</button>
+    </form>
+    <p class="err" id="email-err" role="alert" style="margin-top:10px"></p>
+    <div class="done" id="done" role="status">
+      <b>You're on the list ✓</b>
+      <span id="done-msg"></span>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="stand">
+      <h2>What I stand behind</h2>
+      <p><b>I did not add "Approved by NCI".</b> NCI has not approved this app, and saying it has would mislead the people Sam wants to trust it.</p>
+      <p><b>I did not add "Bank-grade security".</b> This is a prototype with no security testing, so I can't promise that. Instead it stores nothing and moves no money.</p>
+    </div>
+    <p class="fine">HouseTab is a student prototype. All names, bills and amounts are invented. No payments are made and no data leaves this page.</p>
+  </div>
+</footer>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  const PEOPLE = [
+    {id:"Sam",   c:"var(--sam)"},
+    {id:"Priya", c:"var(--priya)"},
+    {id:"Leo",   c:"var(--leo)"},
+    {id:"Aisha", c:"var(--aisha)"},
+    {id:"Minh",  c:"var(--minh)"}
+  ];
+  const TYPES = [
+    {id:"Electricity", ic:"⚡"},
+    {id:"Gas",         ic:"🔥"},
+    {id:"Broadband",   ic:"📶"},
+    {id:"Other",       ic:"🧾"}
+  ];
+  const ALL = PEOPLE.map(p=>p.id);
+  const colour = id => (PEOPLE.find(p=>p.id===id)||{}).c;
+
+  // Amounts in cents
+  let bills = [
+    {type:"Electricity", amount:18500, payer:"Priya", split:[...ALL]},
+    {type:"Gas",         amount:12000, payer:"Priya", split:[...ALL]},
+    {type:"Broadband",   amount: 5000, payer:"Leo",   split:[...ALL]}
+  ];
+  let payments = [];
+  let me = "Sam";
+  let form = {type:"Electricity", payer:"Sam", split:new Set(ALL)};
+
+  const $ = id => document.getElementById(id);
+  const eur = c => "€" + (c/100).toFixed(2);
+  const esc = s => String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+
+  function shares(amount, people){
+    const base = Math.floor(amount / people.length);
+    let rest = amount - base*people.length;
+    return people.map(p => ({p, c: base + (rest-- > 0 ? 1 : 0)}));
+  }
+
+  // net[a][b] > 0 means a owes b
+  function ledger(){
+    const net = {};
+    ALL.forEach(a=>{ net[a]={}; ALL.forEach(b=>net[a][b]=0); });
+    const add = (from,to,c)=>{ if(from===to) return; net[from][to]+=c; net[to][from]-=c; };
+    bills.forEach(b => shares(b.amount, b.split).forEach(s => add(s.p, b.payer, s.c)));
+    payments.forEach(p => add(p.to, p.from, p.c));
+    return net;
+  }
+
+  function chips(el, selected, multi, onPick){
+    el.innerHTML = PEOPLE.map(p=>{
+      const on = multi ? selected.has(p.id) : selected===p.id;
+      return `<button type="button" class="chip${multi?' tick':''}" aria-pressed="${on}" data-id="${p.id}">
+        <span class="dot" style="background:${p.c}"></span>${p.id}</button>`;
+    }).join("");
+    el.querySelectorAll("button").forEach(b=>b.onclick=()=>onPick(b.dataset.id));
+  }
+
+  function renderMine(net){
+    const owe = ALL.filter(o=>net[me][o]>0).map(o=>({o,c:net[me][o]}));
+    const owed = ALL.filter(o=>net[me][o]<0).map(o=>({o,c:-net[me][o]}));
+    const total = owe.reduce((s,x)=>s+x.c,0);
+    let h = "";
+    if(total>0){
+      h += `<div class="total owe"><div class="lbl">You owe</div><div class="big">${eur(total)}</div></div>`;
+      h += `<ul class="rows">` + owe.map(x=>`
+        <li class="row"><span class="l"><span class="av" style="background:${colour(x.o)}">${x.o[0]}</span>
+          <span><span class="small">Pay</span><br><b>${x.o}</b></span></span>
+          <span class="amt">${eur(x.c)}</span>
+          <button class="pay" data-to="${x.o}" data-c="${x.c}">I paid ${x.o}</button></li>`).join("") + `</ul>`;
+    } else {
+      h += `<div class="total clear"><div class="lbl">You owe</div><div class="big">€0.00</div><div class="small">All clear. Nothing to pay.</div></div>`;
+    }
+    if(owed.length){
+      h += `<div class="sec">Owed to you</div><ul class="rows">` + owed.map(x=>`
+        <li class="row"><span class="l"><span class="av" style="background:${colour(x.o)}">${x.o[0]}</span><b>${x.o}</b></span>
+        <span class="amt in">${eur(x.c)}</span></li>`).join("") + `</ul>
+        <p class="small" style="margin-top:10px">They can see this too. You don't need to ask.</p>`;
+    }
+    $("mine").innerHTML = h;
+    $("mine").querySelectorAll(".pay").forEach(b=>b.onclick=()=>{
+      payments.push({from:me, to:b.dataset.to, c:+b.dataset.c});
+      toast(`Marked as paid. ${b.dataset.to} can see it now.`);
+      render();
+    });
+  }
+
+  function renderHouse(net){
+    $("houseT").innerHTML = PEOPLE.map(p=>{
+      const bal = ALL.reduce((s,o)=>s - net[p.id][o], 0); // + means owed to them
+      const txt = bal>0 ? `<span class="pos">gets back ${eur(bal)}</span>` : bal<0 ? `<span class="neg">owes ${eur(-bal)}</span>` : `<span class="small">all clear</span>`;
+      return `<tr><td><span class="l" style="display:flex;align-items:center;gap:10px">
+        <span class="av" style="background:${p.c}">${p.id[0]}</span><b>${p.id}${p.id===me?' (you)':''}</b></span></td><td>${txt}</td></tr>`;
+    }).join("");
+  }
+
+  function renderBills(){
+    if(!bills.length){ $("bills").innerHTML = `<div class="sec">This month's bills</div><p class="small">No bills yet.</p>`; return; }
+    $("bills").innerHTML = `<div class="sec">This month's bills</div>` + bills.map((b,i)=>{
+      const t = TYPES.find(x=>x.id===b.type) || TYPES[3];
+      return `<div class="bill"><span><b>${t.ic} ${esc(b.type)} · ${eur(b.amount)}</b>
+        <span class="small">Paid by ${b.payer} · split ${b.split.length} ways</span></span>
+        <button class="x" data-i="${i}" aria-label="Remove ${esc(b.type)} bill">Remove</button></div>`;
+    }).join("");
+    $("bills").querySelectorAll(".x").forEach(x=>x.onclick=()=>{ bills.splice(+x.dataset.i,1); render(); });
+  }
+
+  function renderForm(){
+    $("types").innerHTML = TYPES.map(t=>`<button type="button" class="type" aria-pressed="${form.type===t.id}" data-id="${t.id}">
+      <span class="ic" aria-hidden="true">${t.ic}</span>${t.id}</button>`).join("");
+    $("types").querySelectorAll("button").forEach(b=>b.onclick=()=>{ form.type=b.dataset.id; renderForm(); });
+    chips($("payer"), form.payer, false, id=>{ form.payer=id; renderForm(); });
+    chips($("split"), form.split, true, id=>{ form.split.has(id)?form.split.delete(id):form.split.add(id); renderForm(); });
+    updatePreview();
+  }
+
+  function amountCents(){
+    const v = $("amt").value.replace(",",".").replace(/[^\d.]/g,"");
+    const n = parseFloat(v);
+    return isFinite(n) ? Math.round(n*100) : 0;
+  }
+  function updatePreview(){
+    const c = amountCents(), n = form.split.size;
+    $("preview").textContent = n ? `Each person pays ${eur(Math.ceil(c/n))}` + (c % n ? " (or 1 cent less)" : "") : "Pick at least one person";
+  }
+
+  $("amt").addEventListener("input", ()=>{ $("err").textContent=""; updatePreview(); });
+
+  $("add").onclick = ()=>{
+    const c = amountCents();
+    if(c<=0){ $("err").textContent = "Please type how much the bill was."; $("amt").focus(); return; }
+    if(c>500000){ $("err").textContent = "That looks too big for one bill. Check the amount."; return; }
+    if(!form.split.size){ $("err").textContent = "Pick who shares this bill."; return; }
+    bills.unshift({type:form.type, amount:c, payer:form.payer, split:ALL.filter(p=>form.split.has(p))});
+    $("amt").value=""; $("err").textContent="";
+    toast(`${form.type} bill split. Everyone can see their share.`);
+    render();
+  };
+
+  function render(){
+    const net = ledger();
+    chips($("me"), me, false, id=>{ me=id; render(); });
+    renderMine(net); renderHouse(net); renderBills(); renderForm();
+  }
+
+  let tt;
+  function toast(msg){
+    const t=$("toast"); t.textContent=msg; t.classList.add("show");
+    clearTimeout(tt); tt=setTimeout(()=>t.classList.remove("show"),2600);
+  }
+
+  // Sign-up: confirms on screen only. The email is not stored or sent anywhere.
+  $("signup").addEventListener("submit", e=>{
+    e.preventDefault();
+    const v = $("email").value.trim();
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){ $("email-err").textContent = "Please type a full email, like name@example.com"; $("email").focus(); return; }
+    $("email-err").textContent="";
+    $("signup").style.display="none";
+    $("done-msg").textContent = `We'll write to ${v} when the test opens. (This is a prototype, so your email was not saved.)`;
+    $("done").style.display="block";
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
